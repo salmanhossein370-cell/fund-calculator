@@ -259,7 +259,10 @@ export default function App() {
         "Per installare FUND_CALCULATOR sul tuo iPhone/iPad:\n\n1. Tocca il pulsante Condividi in basso su Safari (icona quadrata con freccia in su).\n2. Scorri l'elenco delle opzioni e seleziona 'Aggiungi alla schermata Home'.\n3. Conferma toccando 'Aggiungi' in alto a destra."
       );
     } else {
-      console.log("Prompt nativo non ancora intercettato");
+      // Direct native fallback instructions for Android
+      alert(
+        "Per installare l'app su Android: tocca i 3 puntini (⋮) in alto a destra su Chrome e seleziona 'Installa applicazione' o 'Aggiungi a schermata Home'."
+      );
     }
   };
 
