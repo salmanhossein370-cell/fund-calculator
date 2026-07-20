@@ -59,7 +59,13 @@ export default function App() {
       }
     };
 
+    const handleAppInstalled = () => {
+      setShowInstallBanner(false);
+      setDeferredPrompt(null);
+    };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     // Dynamic display mode check
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
@@ -76,6 +82,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -233,16 +240,30 @@ export default function App() {
 
   // --- PWA Installation Functions ---
   const handleInstallClick = async () => {
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
     if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`PWA user install choice: ${outcome}`);
-      setDeferredPrompt(null);
-      setShowInstallBanner(false);
-    } else {
-      // Custom instructions for iOS Safari or other browsers
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log(`PWA user install choice: ${outcome}`);
+        if (outcome === 'accepted') {
+          setShowInstallBanner(false);
+        }
+        setDeferredPrompt(null);
+      } catch (err) {
+        console.error("Error triggering PWA prompt:", err);
+      }
+    } else if (isIOS) {
+      // Custom instructions for iOS Safari
       alert(
-        "Per installare FUND_CALCULATOR sul tuo telefono:\n\n1. Tocca il pulsante Condividi in basso su Safari (icona quadrata con freccia in su).\n2. Scorri l'elenco delle opzioni e seleziona 'Aggiungi alla schermata Home'.\n3. Conferma toccando 'Aggiungi' in alto a destra."
+        "Per installare FUND_CALCULATOR sul tuo iPhone/iPad:\n\n1. Tocca il pulsante Condividi in basso su Safari (icona quadrata con freccia in su).\n2. Scorri l'elenco delle opzioni e seleziona 'Aggiungi alla schermata Home'.\n3. Conferma toccando 'Aggiungi' in alto a destra."
+      );
+    } else {
+      // It's Android or another browser, but deferredPrompt is not ready yet or PWA is already installed
+      alert(
+        "L'installazione è in preparazione o l'app è già installata. Se usi Chrome, puoi anche installarla toccando i tre puntini in alto a destra e selezionando 'Installa applicazione'."
       );
     }
   };
