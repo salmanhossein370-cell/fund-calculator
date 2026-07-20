@@ -7,6 +7,7 @@ import CRTDisplay from './components/CRTDisplay';
 import ReceiptList from './components/ReceiptList';
 import SettingsModal from './components/SettingsModal';
 import ConfirmModal from './components/ConfirmModal';
+import { triggerHaptic } from './utils/haptic';
 
 export default function App() {
   // --- States ---
@@ -138,6 +139,7 @@ export default function App() {
 
   // --- Keyboard Functions ---
   const handleDigitPress = (digit: string) => {
+    triggerHaptic(10);
     setTypedAmount((prev) => {
       // Check decimal place restriction (limit to 2 decimal places)
       if (prev.includes('.')) {
@@ -162,6 +164,7 @@ export default function App() {
   };
 
   const handleDotPress = () => {
+    triggerHaptic(10);
     setTypedAmount((prev) => {
       if (prev === '') {
         return '0.';
@@ -174,6 +177,7 @@ export default function App() {
   };
 
   const handleBackspacePress = () => {
+    triggerHaptic(15);
     setTypedAmount((prev) => {
       if (prev.length <= 1) {
         return '';
@@ -183,15 +187,18 @@ export default function App() {
   };
 
   const handleClearPress = () => {
+    triggerHaptic(20);
     setTypedAmount('');
   };
 
   const handleEnterPress = () => {
     const parsed = parseFloat(typedAmount);
     if (isNaN(parsed) || parsed <= 0) {
-      // Show simple visual vibration/vibe but do not add empty numbers
+      triggerHaptic(40); // larger click/vibration for invalid press
       return;
     }
+
+    triggerHaptic(30); // distinct click for enter
 
     // Get current local time format HH:MM
     const now = new Date();
@@ -218,10 +225,12 @@ export default function App() {
   };
 
   const handleRemoveEntry = (id: string) => {
+    triggerHaptic(25);
     setReceipts((prev) => prev.filter((r) => r.id !== id));
   };
 
   const handleResetSystem = () => {
+    triggerHaptic(50);
     setReceipts([]);
     setTypedAmount('');
     setNoteText('');
@@ -229,6 +238,7 @@ export default function App() {
   };
 
   const handleSelectCurrencySymbol = (symbol: string) => {
+    triggerHaptic(15);
     setCurrencySymbol(symbol);
     // Optionally update all historical entries to make them look uniform,
     // or keep them as is. Let's update all historical receipt symbols to match the selected currency symbol!
@@ -301,7 +311,10 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={handleInstallClick}
+                    onClick={() => {
+                      triggerHaptic(15);
+                      handleInstallClick();
+                    }}
                     style={{
                       background: '#0b3a23',
                       color: '#00ff66',
@@ -316,7 +329,10 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    onClick={handleCloseBanner}
+                    onClick={() => {
+                      triggerHaptic(10);
+                      handleCloseBanner();
+                    }}
                     style={{ color: '#4a4d52', fontSize: '0.85rem' }}
                     className="cursor-pointer border-none p-1 hover:text-white transition-colors"
                     title="Chiudi"
@@ -342,7 +358,10 @@ export default function App() {
           <button
             type="button"
             id="btn-settings-trigger"
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => {
+              triggerHaptic(15);
+              setIsSettingsOpen(true);
+            }}
             style={{ color: '#4a4d52', fontSize: '1.1rem' }}
             className="cursor-pointer hover:text-white transition-colors p-1"
             title="Open Settings"
@@ -426,7 +445,10 @@ export default function App() {
           <button
             type="button"
             id="btnPlus"
-            onClick={() => setCurrentMode('plus')}
+            onClick={() => {
+              triggerHaptic(15);
+              setCurrentMode('plus');
+            }}
             style={{
               fontFamily: 'inherit',
               fontWeight: 'bold',
@@ -448,7 +470,10 @@ export default function App() {
           <button
             type="button"
             id="btnMinus"
-            onClick={() => setCurrentMode('minus')}
+            onClick={() => {
+              triggerHaptic(15);
+              setCurrentMode('minus');
+            }}
             style={{
               fontFamily: 'inherit',
               fontWeight: 'bold',

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ReceiptEntry } from '../types';
 import { Trash2 } from 'lucide-react';
+import { triggerHaptic } from '../utils/haptic';
 
 interface ReceiptListProps {
   receipts: ReceiptEntry[];
@@ -9,13 +10,24 @@ interface ReceiptListProps {
 
 export default function ReceiptList({ receipts, onRemoveEntry }: ReceiptListProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef<number>(0);
 
   // Automatically scroll to top when new items are added
   useEffect(() => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = 0;
+      lastScrollTopRef.current = 0;
     }
   }, [receipts]);
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const currentScrollTop = e.currentTarget.scrollTop;
+    const delta = Math.abs(currentScrollTop - lastScrollTopRef.current);
+    if (delta > 22) {
+      triggerHaptic(6); // Very short mechanical click for scroll ticks
+      lastScrollTopRef.current = currentScrollTop;
+    }
+  };
 
   const sortedReceipts = [...receipts].reverse();
 
@@ -72,6 +84,7 @@ export default function ReceiptList({ receipts, onRemoveEntry }: ReceiptListProp
         ) : (
           <div
             ref={scrollContainerRef}
+            onScroll={handleScroll}
             className="terminal-scroll flex-1 min-h-0 overflow-y-auto pr-3.5 flex flex-col gap-[6px]"
             id="receipt-scroll-area"
           >
@@ -110,7 +123,10 @@ export default function ReceiptList({ receipts, onRemoveEntry }: ReceiptListProp
                         <button
                           type="button"
                           id={`btn-delete-entry-${entry.id}`}
-                          onClick={() => onRemoveEntry(entry.id)}
+                          onClick={() => {
+                            triggerHaptic(20);
+                            onRemoveEntry(entry.id);
+                          }}
                           title="Delete entry"
                           className="opacity-0 group-hover:opacity-100 text-[#4a4d52] hover:text-[#ff3b5c] transition-all duration-150 p-0.5 rounded cursor-pointer ml-1"
                         >
