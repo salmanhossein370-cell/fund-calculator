@@ -363,6 +363,7 @@ export default function App() {
             borderRadius: '12px',
             padding: '8px 14px',
             height: '70px',
+            border: '1px solid #222428',
           }}
           className="flex flex-col justify-between select-none mb-1.5"
           id="amount-editor-panel"
@@ -432,12 +433,13 @@ export default function App() {
               fontSize: '0.9rem',
               borderRadius: '20px',
               padding: '10px 0',
-              backgroundColor: currentMode === 'plus' ? '#0f5a36' : '#0d4227',
-              color: '#00ff66',
-              boxShadow: currentMode === 'plus' ? '0 0 10px rgba(0, 255, 102, 0.2)' : 'none',
+              backgroundColor: currentMode === 'plus' ? '#00ff66' : '#0a1c12',
+              color: currentMode === 'plus' ? '#050d09' : '#00ff6640',
+              boxShadow: currentMode === 'plus' ? '0 0 15px rgba(0, 255, 102, 0.6)' : 'none',
+              border: currentMode === 'plus' ? '1px solid #00ff66' : '1px solid #00ff6615',
               transition: 'all 0.2s',
             }}
-            className="flex-1 border-none cursor-pointer"
+            className="flex-1 cursor-pointer"
           >
             +FUND
           </button>
@@ -453,12 +455,13 @@ export default function App() {
               fontSize: '0.9rem',
               borderRadius: '20px',
               padding: '10px 0',
-              backgroundColor: currentMode === 'minus' ? '#581222' : '#3d0e19',
-              color: '#ff3b5c',
-              boxShadow: currentMode === 'minus' ? '0 0 10px rgba(255, 59, 92, 0.2)' : 'none',
+              backgroundColor: currentMode === 'minus' ? '#ff3b5c' : '#1a0a0d',
+              color: currentMode === 'minus' ? '#0d0506' : '#ff3b5c40',
+              boxShadow: currentMode === 'minus' ? '0 0 15px rgba(255, 59, 92, 0.6)' : 'none',
+              border: currentMode === 'minus' ? '1px solid #ff3b5c' : '1px solid #ff3b5c15',
               transition: 'all 0.2s',
             }}
-            className="flex-1 border-none cursor-pointer"
+            className="flex-1 cursor-pointer"
           >
             -FUND
           </button>

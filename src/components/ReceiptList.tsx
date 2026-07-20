@@ -44,6 +44,7 @@ export default function ReceiptList({ receipts, onRemoveEntry }: ReceiptListProp
           display: 'flex',
           flexDirection: 'column',
           position: 'relative',
+          border: '1px solid #222428',
         }}
         className="flex-1 min-h-0 overflow-hidden"
         id="receipt-list-inner"
