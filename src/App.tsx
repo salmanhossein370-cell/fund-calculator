@@ -27,7 +27,6 @@ export default function App() {
   // PWA Installation States
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
-  const [isPreparingInstall, setIsPreparingInstall] = useState<boolean>(false);
 
   // Modals
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -249,10 +248,8 @@ export default function App() {
         deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
         console.log(`PWA user install choice: ${outcome}`);
-        if (outcome === 'accepted') {
-          setShowInstallBanner(false);
-        }
         setDeferredPrompt(null);
+        setShowInstallBanner(false);
       } catch (err) {
         console.error("Error triggering PWA prompt:", err);
       }
@@ -262,16 +259,7 @@ export default function App() {
         "Per installare FUND_CALCULATOR sul tuo iPhone/iPad:\n\n1. Tocca il pulsante Condividi in basso su Safari (icona quadrata con freccia in su).\n2. Scorri l'elenco delle opzioni e seleziona 'Aggiungi alla schermata Home'.\n3. Conferma toccando 'Aggiungi' in alto a destra."
       );
     } else {
-      // It's Android or other browser, but deferredPrompt is not ready yet
-      setIsPreparingInstall(true);
-      
-      // Simulate/wait for PWA preparation check
-      setTimeout(() => {
-        setIsPreparingInstall(false);
-        alert(
-          "Preparazione installazione in corso...\n\nSe il pop-up nativo non appare automaticamente, puoi installare FUND_CALCULATOR in qualsiasi momento dal menu di Chrome: tocca i tre puntini (⋮) in alto a destra e seleziona 'Installa applicazione' o 'Aggiungi a schermata Home'."
-        );
-      }, 2000);
+      console.log("Prompt nativo non ancora intercettato");
     }
   };
 
@@ -304,28 +292,24 @@ export default function App() {
               >
                 <div className="flex-1 pr-2">
                   <p className="text-[0.65rem] text-[#e0e0e0] leading-normal uppercase font-bold">
-                    {isPreparingInstall 
-                      ? "Verifica e preparazione dei requisiti di installazione..." 
-                      : "Installa FUND_CALCULATOR sul telefono per l'esperienza a tutto schermo"}
+                    Installa FUND_CALCULATOR sul telefono per l'esperienza a tutto schermo
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={isPreparingInstall}
                     onClick={handleInstallClick}
                     style={{
-                      background: isPreparingInstall ? '#1a1c1e' : '#0b3a23',
-                      color: isPreparingInstall ? '#6b7280' : '#00ff66',
+                      background: '#0b3a23',
+                      color: '#00ff66',
                       fontSize: '0.65rem',
                       fontWeight: 'bold',
                       borderRadius: '6px',
                       padding: '4px 8px',
-                      opacity: isPreparingInstall ? 0.6 : 1,
                     }}
-                    className="cursor-pointer border-none uppercase hover:bg-[#0f5a36] transition-colors active:scale-95 disabled:pointer-events-none"
+                    className="cursor-pointer border-none uppercase hover:bg-[#0f5a36] transition-colors active:scale-95"
                   >
-                    {isPreparingInstall ? "ATTENDI..." : "INSTALLA"}
+                    INSTALLA
                   </button>
                   <button
                     type="button"
