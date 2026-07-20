@@ -1,0 +1,6 @@
+{
+  "name": "Fund Calculator",
+  "description": "Terminal-style retro-futuristic fund calculator with support for multiple currencies, custom entries, and receipt tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
