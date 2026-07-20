@@ -713,7 +713,7 @@ export default function App() {
           <button
             type="button"
             id="btn-reset-trigger"
-            onClick={() => setIsResetOpen(true)}
+            onClick={handleResetSystem}
             style={{
               width: '40px',
               height: '14px',
