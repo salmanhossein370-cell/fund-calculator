@@ -277,59 +277,62 @@ export default function App() {
               padding: '10px 16px',
               fontFamily: "'Share Tech Mono', monospace",
             }}
-            className="flex items-center justify-between select-none"
+            className="select-none"
             id="pwa-install-banner"
           >
-            <div className="flex items-center gap-3">
-              <img
-                src="/icon.png"
-                alt="App Icon"
-                referrerPolicy="no-referrer"
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '8px',
-                  objectFit: 'cover',
-                  border: '1px solid rgba(0, 255, 136, 0.3)',
-                }}
-              />
-              <p className="text-[0.7rem] sm:text-[0.75rem] text-[#e0e0e0] font-bold uppercase tracking-tight">
-                Installa FUND_CALCULATOR per l'esperienza a tutto schermo
-              </p>
-            </div>
-            <div className="flex items-center gap-3.5">
-              <button
-                type="button"
-                onPointerDown={() => triggerHaptic('action')}
-                onClick={() => {
-                  handleInstallClick();
-                }}
-                style={{
-                  background: '#00ff88',
-                  color: '#0c0d0e',
-                  fontSize: '0.65rem',
-                  fontWeight: 'bold',
-                  borderRadius: '20px',
-                  padding: '6px 12px',
-                  border: 'none',
-                  boxShadow: '0 0 8px rgba(0, 255, 136, 0.4)',
-                }}
-                className="cursor-pointer uppercase hover:scale-105 active:scale-95 transition-all"
-              >
-                INSTALLA
-              </button>
-              <button
-                type="button"
-                onPointerDown={() => triggerHaptic('action')}
-                onClick={() => {
-                  handleCloseBanner();
-                }}
-                style={{ color: '#888', fontSize: '0.95rem', background: 'none', border: 'none' }}
-                className="cursor-pointer p-1 hover:text-white transition-colors"
-                title="Chiudi"
-              >
-                ✕
-              </button>
+            <div className="w-full max-w-[800px] mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <img
+                  src="/icon.png"
+                  alt="App Icon"
+                  referrerPolicy="no-referrer"
+                  style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    objectFit: 'cover',
+                    border: '1px solid rgba(0, 255, 136, 0.3)',
+                    flexShrink: 0,
+                  }}
+                />
+                <p className="text-[0.7rem] sm:text-[0.75rem] text-[#e0e0e0] font-bold uppercase tracking-tight truncate">
+                  Installa FUND_CALCULATOR per l'esperienza a tutto schermo
+                </p>
+              </div>
+              <div className="flex items-center gap-3.5 flex-shrink-0">
+                <button
+                  type="button"
+                  onPointerDown={() => triggerHaptic('action')}
+                  onClick={() => {
+                    handleInstallClick();
+                  }}
+                  style={{
+                    background: '#00ff88',
+                    color: '#0c0d0e',
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    borderRadius: '20px',
+                    padding: '6px 12px',
+                    border: 'none',
+                    boxShadow: '0 0 8px rgba(0, 255, 136, 0.4)',
+                  }}
+                  className="cursor-pointer uppercase hover:scale-105 active:scale-95 transition-all"
+                >
+                  INSTALLA
+                </button>
+                <button
+                  type="button"
+                  onPointerDown={() => triggerHaptic('action')}
+                  onClick={() => {
+                    handleCloseBanner();
+                  }}
+                  style={{ color: '#888', fontSize: '0.95rem', background: 'none', border: 'none' }}
+                  className="cursor-pointer p-1 hover:text-white transition-colors"
+                  title="Chiudi"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
