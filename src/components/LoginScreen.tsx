@@ -43,7 +43,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         if (data.user) {
           setTimeout(() => {
             onAuthSuccess(data.user);
-          }, 1000);
+          }, 600);
         }
       } else {
         const { error, data } = await client.auth.signUp({
@@ -54,7 +54,27 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           }
         });
         if (error) throw error;
-        setSuccessMsg('Registrazione completata! Controlla la tua email per confermare.');
+
+        if (data?.session && data?.user) {
+          setSuccessMsg('Registrazione ed accesso completati!');
+          setTimeout(() => {
+            onAuthSuccess(data.user);
+          }, 600);
+        } else {
+          // Attempt automatic sign in with password
+          const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (!signInError && signInData?.user) {
+            setSuccessMsg('Registrazione ed accesso effettuati con successo!');
+            setTimeout(() => {
+              onAuthSuccess(signInData.user);
+            }, 600);
+          } else {
+            setSuccessMsg('Registrazione inviata! Se è richiesta la verifica dell\'email, controlla la tua casella di posta.');
+          }
+        }
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Errore durante l\'autenticazione');

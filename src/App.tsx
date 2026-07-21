@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, Delete, RefreshCw, Power, BookOpen, Cloud, CloudOff, Database } from 'lucide-react';
+import { Settings, Delete, RefreshCw, Power, BookOpen, Cloud, CloudOff, Database, AlertCircle } from 'lucide-react';
 
 import { ReceiptEntry } from './types';
 import { extractShahriyarValue, hasShahriyarValue } from './utils/parser';
@@ -49,6 +49,7 @@ export default function App() {
   // Supabase Auth and Sync Status
   const [user, setUser] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // References
   const noteInputRef = useRef<HTMLInputElement>(null);
@@ -58,25 +59,28 @@ export default function App() {
   const syncReceipts = async (currentUser = user) => {
     if (!currentUser || !isSupabaseConfigured()) return;
     setSyncing(true);
+    setSyncError(null);
     const client = getSupabaseClient();
     try {
       const { data: remoteData, error } = await client
         .from('receipts')
         .select('*')
+        .eq('user_id', currentUser.id)
         .order('created_at', { ascending: true });
 
       if (error) {
         console.error('Error fetching receipts from Supabase:', error);
+        setSyncError(`Avviso Cloud: ${error.message} (Codice: ${error.code || 'RLS'})`);
         return;
       }
 
       const remoteAll: ReceiptEntry[] = (remoteData || []).map((r: any) => ({
         id: r.id,
         type: r.type as 'plus' | 'minus',
-        amount: parseFloat(r.amount),
+        amount: parseFloat(r.amount) || 0,
         note: r.note || '',
         time: r.time,
-        currencySymbol: r.currency_symbol,
+        currencySymbol: r.currency_symbol || currencySymbol,
       }));
 
       // Split remote into calculator receipts vs notebook entries
@@ -86,7 +90,7 @@ export default function App() {
 
       const remoteReceipts = remoteAll.filter((r) => !r.note || !r.note.startsWith('[Notebook] '));
 
-      // 1. Sync Calculator Receipts
+      // Merge local unsynced entries if any
       const localReceipts = [...receipts];
       const mergedReceipts = [...remoteReceipts];
       const toUploadReceipts = localReceipts.filter((l) => !remoteReceipts.some((r) => r.id === l.id));
@@ -105,13 +109,14 @@ export default function App() {
         const { error: insertError } = await client.from('receipts').insert(insertPayload);
         if (insertError) {
           console.error('Error uploading local receipts:', insertError);
+          setSyncError(`Errore salvataggio Cloud: ${insertError.message}`);
         } else {
           mergedReceipts.push(...toUploadReceipts);
         }
       }
       setReceipts(mergedReceipts);
 
-      // 2. Sync Notebook Entries
+      // Merge local notebook entries if any
       const localNotebook = [...notebookEntries];
       const mergedNotebook = [...remoteNotebook];
       const toUploadNotebook = localNotebook.filter((l) => !remoteNotebook.some((r) => r.id === l.id));
@@ -130,18 +135,46 @@ export default function App() {
         const { error: insertError } = await client.from('receipts').insert(insertPayload);
         if (insertError) {
           console.error('Error uploading local notebook:', insertError);
+          setSyncError(`Errore salvataggio Taccuino Cloud: ${insertError.message}`);
         } else {
           mergedNotebook.push(...toUploadNotebook);
         }
       }
       setNotebookEntries(mergedNotebook);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Sync failed:', err);
+      setSyncError(`Errore di connessione Cloud: ${err.message || 'Rete non disponibile'}`);
     } finally {
       setSyncing(false);
     }
   };
+
+  // Realtime subscription setup
+  useEffect(() => {
+    if (!user || !isSupabaseConfigured()) return;
+
+    const client = getSupabaseClient();
+    const channel = client
+      .channel('public_receipts_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'receipts',
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          syncReceipts(user);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [user]);
 
   // Auth session listener
   useEffect(() => {
@@ -173,15 +206,19 @@ export default function App() {
     prevUserRef.current = user;
   }, [user]);
 
-  // Save receipts to LocalStorage
+  // Save receipts to LocalStorage ONLY when NOT authenticated
   useEffect(() => {
-    localStorage.setItem('fund_calculator_receipts', JSON.stringify(receipts));
-  }, [receipts]);
+    if (!user) {
+      localStorage.setItem('fund_calculator_receipts', JSON.stringify(receipts));
+    }
+  }, [receipts, user]);
 
-  // Save notebook entries to LocalStorage
+  // Save notebook entries to LocalStorage ONLY when NOT authenticated
   useEffect(() => {
-    localStorage.setItem('fund_calculator_notebook_entries', JSON.stringify(notebookEntries));
-  }, [notebookEntries]);
+    if (!user) {
+      localStorage.setItem('fund_calculator_notebook_entries', JSON.stringify(notebookEntries));
+    }
+  }, [notebookEntries, user]);
 
   // Save currency to LocalStorage
   useEffect(() => {
@@ -363,7 +400,10 @@ export default function App() {
           currency_symbol: newEntry.currencySymbol,
         })
         .then(({ error }) => {
-          if (error) console.error('Supabase insert error:', error);
+          if (error) {
+            console.error('Supabase insert error:', error);
+            setSyncError(`Errore salvataggio Cloud: ${error.message}`);
+          }
         });
     }
     
@@ -382,8 +422,12 @@ export default function App() {
         .from('receipts')
         .delete()
         .eq('id', id)
+        .eq('user_id', user.id)
         .then(({ error }) => {
-          if (error) console.error('Supabase delete error:', error);
+          if (error) {
+            console.error('Supabase delete error:', error);
+            setSyncError(`Errore eliminazione Cloud: ${error.message}`);
+          }
         });
     }
   };
@@ -402,8 +446,12 @@ export default function App() {
         .from('receipts')
         .update({ note, amount })
         .eq('id', id)
+        .eq('user_id', user.id)
         .then(({ error }) => {
-          if (error) console.error('Supabase update error:', error);
+          if (error) {
+            console.error('Supabase update error:', error);
+            setSyncError(`Errore aggiornamento Cloud: ${error.message}`);
+          }
         });
     }
   };
@@ -441,7 +489,10 @@ export default function App() {
           currency_symbol: newEntry.currencySymbol,
         })
         .then(({ error }) => {
-          if (error) console.error('Supabase insert error:', error);
+          if (error) {
+            console.error('Supabase insert error:', error);
+            setSyncError(`Errore creazione Cloud: ${error.message}`);
+          }
         });
     }
   };
@@ -456,8 +507,12 @@ export default function App() {
         .from('receipts')
         .delete()
         .eq('id', id)
+        .eq('user_id', user.id)
         .then(({ error }) => {
-          if (error) console.error('Supabase notebook delete error:', error);
+          if (error) {
+            console.error('Supabase notebook delete error:', error);
+            setSyncError(`Errore eliminazione Taccuino: ${error.message}`);
+          }
         });
     }
   };
@@ -476,8 +531,12 @@ export default function App() {
         .from('receipts')
         .update({ note: `[Notebook] ${note}`, amount })
         .eq('id', id)
+        .eq('user_id', user.id)
         .then(({ error }) => {
-          if (error) console.error('Supabase notebook update error:', error);
+          if (error) {
+            console.error('Supabase notebook update error:', error);
+            setSyncError(`Errore aggiornamento Taccuino: ${error.message}`);
+          }
         });
     }
   };
@@ -515,7 +574,10 @@ export default function App() {
           currency_symbol: newEntry.currencySymbol,
         })
         .then(({ error }) => {
-          if (error) console.error('Supabase notebook insert error:', error);
+          if (error) {
+            console.error('Supabase notebook insert error:', error);
+            setSyncError(`Errore creazione Taccuino: ${error.message}`);
+          }
         });
     }
   };
@@ -535,8 +597,12 @@ export default function App() {
         .from('receipts')
         .delete()
         .in('id', idsToDelete)
+        .eq('user_id', user.id)
         .then(({ error }) => {
-          if (error) console.error('Supabase reset error:', error);
+          if (error) {
+            console.error('Supabase reset error:', error);
+            setSyncError(`Errore reset Cloud: ${error.message}`);
+          }
         });
     }
   };
@@ -726,6 +792,30 @@ export default function App() {
             </button>
           </div>
         </header>
+
+        {/* CLOUD SYNC ERROR / PERMISSION ALERT BANNER */}
+        <AnimatePresence>
+          {syncError && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="my-1 p-2 bg-[#281010] border border-[#ff3366]/40 rounded-xl flex items-center justify-between text-[0.65rem] text-[#ff6688] font-mono select-none"
+            >
+              <div className="flex items-center gap-1.5 min-w-0 pr-2">
+                <AlertCircle size={14} className="flex-shrink-0 text-[#ff3366]" />
+                <span className="truncate">{syncError}</span>
+              </div>
+              <button
+                onClick={() => setSyncError(null)}
+                className="text-xs text-slate-400 hover:text-white px-1.5 cursor-pointer"
+                title="Chiudi avviso"
+              >
+                ✕
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* CRT DISPLAY PANEL */}
         <section className="my-1.5" id="display-section">

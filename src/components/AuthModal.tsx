@@ -65,22 +65,38 @@ export default function AuthModal({
     try {
       if (activeTab === 'login') {
         const { error, data } = await client.auth.signInWithPassword({
-          email,
+          email: email.trim(),
           password,
         });
         if (error) throw error;
         setSuccessMsg('Accesso effettuato con successo!');
-        setTimeout(() => onClose(), 1500);
+        setTimeout(() => onClose(), 1000);
       } else {
         const { error, data } = await client.auth.signUp({
-          email,
+          email: email.trim(),
           password,
           options: {
             emailRedirectTo: window.location.origin,
           }
         });
         if (error) throw error;
-        setSuccessMsg('Registrazione avvenuta! Controlla la mail per confermare (se richiesto).');
+
+        if (data?.session && data?.user) {
+          setSuccessMsg('Registrazione ed accesso completati!');
+          setTimeout(() => onClose(), 1000);
+        } else {
+          // Attempt automatic sign in with password
+          const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+            email: email.trim(),
+            password,
+          });
+          if (!signInError && signInData?.user) {
+            setSuccessMsg('Registrazione ed accesso effettuati con successo!');
+            setTimeout(() => onClose(), 1000);
+          } else {
+            setSuccessMsg('Registrazione inviata! Se è richiesta la verifica dell\'email, controlla la tua casella di posta.');
+          }
+        }
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Si è verificato un errore');
