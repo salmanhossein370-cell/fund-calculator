@@ -49,13 +49,20 @@ export default function App() {
 
   // PWA installation prompt listener
   useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
+    
+    // If already standalone, do not listen or show
+    if (isStandalone) {
+      setShowInstallBanner(false);
+      return;
+    }
+
     // Intercept default prompt
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
       const dismissed = sessionStorage.getItem('pwa_banner_dismissed') === 'true';
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-      if (!dismissed && !isStandalone) {
+      if (!dismissed) {
         setShowInstallBanner(true);
       }
     };
@@ -67,19 +74,6 @@ export default function App() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-
-    // Dynamic display mode check
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-    if (isStandalone) {
-      setShowInstallBanner(false);
-    } else {
-      // Show on mobile devices to nudge users (or iOS Safari custom alert)
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const dismissed = sessionStorage.getItem('pwa_banner_dismissed') === 'true';
-      if (isMobile && !dismissed) {
-        setShowInstallBanner(true);
-      }
-    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -250,29 +244,15 @@ export default function App() {
 
   // --- PWA Installation Functions ---
   const handleInstallClick = async () => {
-    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) || 
-                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-    if (deferredPrompt) {
-      try {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        console.log(`PWA user install choice: ${outcome}`);
-        setDeferredPrompt(null);
-        setShowInstallBanner(false);
-      } catch (err) {
-        console.error("Error triggering PWA prompt:", err);
-      }
-    } else if (isIOS) {
-      // Custom instructions for iOS Safari
-      alert(
-        "Per installare FUND_CALCULATOR sul tuo iPhone/iPad:\n\n1. Tocca il pulsante Condividi in basso su Safari (icona quadrata con freccia in su).\n2. Scorri l'elenco delle opzioni e seleziona 'Aggiungi alla schermata Home'.\n3. Conferma toccando 'Aggiungi' in alto a destra."
-      );
-    } else {
-      // Direct native fallback instructions for Android
-      alert(
-        "Per installare l'app su Android: tocca i 3 puntini (⋮) in alto a destra su Chrome e seleziona 'Installa applicazione' o 'Aggiungi a schermata Home'."
-      );
+    if (!deferredPrompt) return;
+    try {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA user install choice: ${outcome}`);
+      setDeferredPrompt(null);
+      setShowInstallBanner(false);
+    } catch (err) {
+      console.error("Error triggering PWA prompt:", err);
     }
   };
 
@@ -285,65 +265,87 @@ export default function App() {
 
   return (
     <div className="h-[100dvh] w-screen bg-[#0c0d0e] text-[#e0e0e0] flex flex-col items-center justify-center overflow-hidden selection:bg-[#00FF66]/30 selection:text-[#00FF66]" id="app-main-viewport">
+      {/* PWA PREMIUM FLOATING TOP BANNER */}
+      <AnimatePresence>
+        {showInstallBanner && (
+          <motion.div
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              width: '100%',
+              zIndex: 9999,
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              backgroundColor: 'rgba(12, 13, 14, 0.85)',
+              borderBottom: '1px solid #00ff88',
+              padding: '10px 16px',
+              fontFamily: "'Share Tech Mono', monospace",
+            }}
+            className="flex items-center justify-between select-none"
+            id="pwa-install-banner"
+          >
+            <div className="flex items-center gap-3">
+              <img
+                src="/icon.png"
+                alt="App Icon"
+                referrerPolicy="no-referrer"
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  objectFit: 'cover',
+                  border: '1px solid rgba(0, 255, 136, 0.3)',
+                }}
+              />
+              <p className="text-[0.7rem] sm:text-[0.75rem] text-[#e0e0e0] font-bold uppercase tracking-tight">
+                Installa FUND_CALCULATOR per l'esperienza a tutto schermo
+              </p>
+            </div>
+            <div className="flex items-center gap-3.5">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic(15);
+                  handleInstallClick();
+                }}
+                style={{
+                  background: '#00ff88',
+                  color: '#0c0d0e',
+                  fontSize: '0.65rem',
+                  fontWeight: 'bold',
+                  borderRadius: '20px',
+                  padding: '6px 12px',
+                  border: 'none',
+                  boxShadow: '0 0 8px rgba(0, 255, 136, 0.4)',
+                }}
+                className="cursor-pointer uppercase hover:scale-105 active:scale-95 transition-all"
+              >
+                INSTALLA
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic(10);
+                  handleCloseBanner();
+                }}
+                style={{ color: '#888', fontSize: '0.95rem', background: 'none', border: 'none' }}
+                className="cursor-pointer p-1 hover:text-white transition-colors"
+                title="Chiudi"
+              >
+                ✕
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Container: exactly matching the maximum width, padding, flex-col, and space-between */}
       <main className="w-full max-w-[420px] h-[100dvh] p-[10px] px-[14px] flex flex-col justify-between overflow-hidden" id="device-shell">
-        
-        {/* PWA INSTALL BANNER */}
-        <AnimatePresence>
-          {showInstallBanner && (
-            <motion.div
-              initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-              animate={{ height: 'auto', opacity: 1, marginBottom: 10 }}
-              exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              transition={{ duration: 0.3, ease: 'easeInOut' }}
-              className="overflow-hidden w-full"
-              id="pwa-install-banner"
-            >
-              <div
-                className="flex items-center justify-between border border-[#2a2c30] p-2.5 rounded-[12px] bg-[#111214] select-none text-left"
-                style={{ fontFamily: "'Share Tech Mono', monospace" }}
-              >
-                <div className="flex-1 pr-2">
-                  <p className="text-[0.65rem] text-[#e0e0e0] leading-normal uppercase font-bold">
-                    Installa FUND_CALCULATOR sul telefono per l'esperienza a tutto schermo
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic(15);
-                      handleInstallClick();
-                    }}
-                    style={{
-                      background: '#0b3a23',
-                      color: '#00ff66',
-                      fontSize: '0.65rem',
-                      fontWeight: 'bold',
-                      borderRadius: '6px',
-                      padding: '4px 8px',
-                    }}
-                    className="cursor-pointer border-none uppercase hover:bg-[#0f5a36] transition-colors active:scale-95"
-                  >
-                    INSTALLA
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      triggerHaptic(10);
-                      handleCloseBanner();
-                    }}
-                    style={{ color: '#4a4d52', fontSize: '0.85rem' }}
-                    className="cursor-pointer border-none p-1 hover:text-white transition-colors"
-                    title="Chiudi"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* HEADER */}
         <header className="flex justify-between items-start select-none" id="device-header">

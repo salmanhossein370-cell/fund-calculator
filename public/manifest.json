@@ -1,25 +1,17 @@
 {
-  "name": "FUND CALCULATOR",
   "short_name": "FundCalc",
-  "description": "Minimal retro-styled personal fund calculator and receipt tracker",
-  "start_url": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0c0d0e",
-  "theme_color": "#0c0d0e",
-  "categories": ["finance", "utilities"],
+  "name": "FUND CALCULATOR",
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
+      "src": "/icon.png",
       "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
+      "sizes": "2000x2000",
       "purpose": "any maskable"
     }
-  ]
+  ],
+  "start_url": "/",
+  "background_color": "#0c0d0e",
+  "theme_color": "#0c0d0e",
+  "display": "standalone",
+  "orientation": "portrait"
 }
