@@ -24,7 +24,7 @@ export default function ReceiptList({ receipts, onRemoveEntry }: ReceiptListProp
     const currentScrollTop = e.currentTarget.scrollTop;
     const delta = Math.abs(currentScrollTop - lastScrollTopRef.current);
     if (delta > 22) {
-      triggerHaptic(6); // Very short mechanical click for scroll ticks
+      triggerHaptic('scroll'); // Extremely short mechanical click for scroll ticks
       lastScrollTopRef.current = currentScrollTop;
     }
   };
@@ -123,8 +123,8 @@ export default function ReceiptList({ receipts, onRemoveEntry }: ReceiptListProp
                         <button
                           type="button"
                           id={`btn-delete-entry-${entry.id}`}
+                          onPointerDown={() => triggerHaptic('reset')}
                           onClick={() => {
-                            triggerHaptic(20);
                             onRemoveEntry(entry.id);
                           }}
                           title="Delete entry"

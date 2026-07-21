@@ -133,7 +133,6 @@ export default function App() {
 
   // --- Keyboard Functions ---
   const handleDigitPress = (digit: string) => {
-    triggerHaptic(10);
     setTypedAmount((prev) => {
       // Check decimal place restriction (limit to 2 decimal places)
       if (prev.includes('.')) {
@@ -158,7 +157,6 @@ export default function App() {
   };
 
   const handleDotPress = () => {
-    triggerHaptic(10);
     setTypedAmount((prev) => {
       if (prev === '') {
         return '0.';
@@ -171,7 +169,6 @@ export default function App() {
   };
 
   const handleBackspacePress = () => {
-    triggerHaptic(15);
     setTypedAmount((prev) => {
       if (prev.length <= 1) {
         return '';
@@ -181,18 +178,15 @@ export default function App() {
   };
 
   const handleClearPress = () => {
-    triggerHaptic(20);
     setTypedAmount('');
   };
 
   const handleEnterPress = () => {
     const parsed = parseFloat(typedAmount);
     if (isNaN(parsed) || parsed <= 0) {
-      triggerHaptic(40); // larger click/vibration for invalid press
+      triggerHaptic('reset'); // distinct feedback pattern for invalid press
       return;
     }
-
-    triggerHaptic(30); // distinct click for enter
 
     // Get current local time format HH:MM
     const now = new Date();
@@ -219,12 +213,10 @@ export default function App() {
   };
 
   const handleRemoveEntry = (id: string) => {
-    triggerHaptic(25);
     setReceipts((prev) => prev.filter((r) => r.id !== id));
   };
 
   const handleResetSystem = () => {
-    triggerHaptic(50);
     setReceipts([]);
     setTypedAmount('');
     setNoteText('');
@@ -232,7 +224,6 @@ export default function App() {
   };
 
   const handleSelectCurrencySymbol = (symbol: string) => {
-    triggerHaptic(15);
     setCurrencySymbol(symbol);
     // Optionally update all historical entries to make them look uniform,
     // or keep them as is. Let's update all historical receipt symbols to match the selected currency symbol!
@@ -309,8 +300,8 @@ export default function App() {
             <div className="flex items-center gap-3.5">
               <button
                 type="button"
+                onPointerDown={() => triggerHaptic('action')}
                 onClick={() => {
-                  triggerHaptic(15);
                   handleInstallClick();
                 }}
                 style={{
@@ -329,8 +320,8 @@ export default function App() {
               </button>
               <button
                 type="button"
+                onPointerDown={() => triggerHaptic('action')}
                 onClick={() => {
-                  triggerHaptic(10);
                   handleCloseBanner();
                 }}
                 style={{ color: '#888', fontSize: '0.95rem', background: 'none', border: 'none' }}
@@ -360,8 +351,8 @@ export default function App() {
           <button
             type="button"
             id="btn-settings-trigger"
+            onPointerDown={() => triggerHaptic('action')}
             onClick={() => {
-              triggerHaptic(15);
               setIsSettingsOpen(true);
             }}
             style={{ color: '#4a4d52', fontSize: '1.1rem' }}
@@ -447,8 +438,8 @@ export default function App() {
           <button
             type="button"
             id="btnPlus"
+            onPointerDown={() => triggerHaptic('action')}
             onClick={() => {
-              triggerHaptic(15);
               setCurrentMode('plus');
             }}
             style={{
@@ -472,8 +463,8 @@ export default function App() {
           <button
             type="button"
             id="btnMinus"
+            onPointerDown={() => triggerHaptic('action')}
             onClick={() => {
-              triggerHaptic(15);
               setCurrentMode('minus');
             }}
             style={{
@@ -504,6 +495,7 @@ export default function App() {
           {/* Row 1 */}
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('7')}
             style={{
               background: '#17181b',
@@ -519,6 +511,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('8')}
             style={{
               background: '#17181b',
@@ -534,6 +527,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('9')}
             style={{
               background: '#17181b',
@@ -551,6 +545,7 @@ export default function App() {
           {/* Row 2 */}
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('4')}
             style={{
               background: '#17181b',
@@ -566,6 +561,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('5')}
             style={{
               background: '#17181b',
@@ -581,6 +577,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('6')}
             style={{
               background: '#17181b',
@@ -598,6 +595,7 @@ export default function App() {
           {/* Row 3 */}
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('1')}
             style={{
               background: '#17181b',
@@ -613,6 +611,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('2')}
             style={{
               background: '#17181b',
@@ -628,6 +627,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('3')}
             style={{
               background: '#17181b',
@@ -645,6 +645,7 @@ export default function App() {
           {/* Row 4 */}
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={handleDotPress}
             style={{
               background: '#17181b',
@@ -660,6 +661,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('key')}
             onClick={() => handleDigitPress('0')}
             style={{
               background: '#17181b',
@@ -675,6 +677,7 @@ export default function App() {
           </button>
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('reset')}
             onClick={handleBackspacePress}
             style={{
               background: '#17181b',
@@ -693,6 +696,7 @@ export default function App() {
           {/* Row 5 */}
           <button
             type="button"
+            onPointerDown={() => triggerHaptic('reset')}
             onClick={handleClearPress}
             style={{
               background: '#17181b',
@@ -709,6 +713,11 @@ export default function App() {
           
           <button
             type="button"
+            onPointerDown={() => {
+              if (isEnterActive) {
+                triggerHaptic('action');
+              }
+            }}
             onClick={handleEnterPress}
             style={{
               gridColumn: 'span 2',
@@ -743,6 +752,7 @@ export default function App() {
           <button
             type="button"
             id="btn-reset-trigger"
+            onPointerDown={() => triggerHaptic('reset')}
             onClick={handleResetSystem}
             style={{
               width: '40px',
