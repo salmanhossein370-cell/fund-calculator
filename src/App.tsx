@@ -10,6 +10,7 @@ import SettingsModal from './components/SettingsModal';
 import ConfirmModal from './components/ConfirmModal';
 import AutomaticNotebook from './components/AutomaticNotebook';
 import AuthModal from './components/AuthModal';
+import LoginScreen from './components/LoginScreen';
 import { triggerHaptic } from './utils/haptic';
 import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
 
@@ -51,6 +52,7 @@ export default function App() {
 
   // References
   const noteInputRef = useRef<HTMLInputElement>(null);
+  const prevUserRef = useRef<any>(null);
 
   // --- Effects & Supabase Sync ---
   const syncReceipts = async (currentUser = user) => {
@@ -157,11 +159,18 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sync receipts whenever user changes
+  // Sync receipts whenever user changes, and purge local state on explicit logout
   useEffect(() => {
     if (user) {
       syncReceipts(user);
+    } else if (prevUserRef.current !== null) {
+      // Clear all local states on explicit logout for absolute user data privacy
+      setReceipts([]);
+      setNotebookEntries([]);
+      localStorage.removeItem('fund_calculator_receipts');
+      localStorage.removeItem('fund_calculator_notebook_entries');
     }
+    prevUserRef.current = user;
   }, [user]);
 
   // Save receipts to LocalStorage
@@ -562,6 +571,10 @@ export default function App() {
   };
 
   const isEnterActive = typedAmount.length > 0 && parseFloat(typedAmount) > 0;
+
+  if (!user) {
+    return <LoginScreen onAuthSuccess={setUser} />;
+  }
 
   return (
     <div className="h-[100dvh] w-screen bg-[#0c0d0e] text-[#e0e0e0] flex flex-col items-center justify-center overflow-hidden selection:bg-[#00FF66]/30 selection:text-[#00FF66]" id="app-main-viewport">

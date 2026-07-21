@@ -210,14 +210,14 @@ export default function AutomaticNotebook({
                 triggerHaptic('action');
                 setActiveTab('take');
               }}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-3 text-[0.7rem] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'take'
                   ? 'bg-[#14171d] text-[#00ff66] border border-[#00ff66]/30 shadow-[0_0_12px_rgba(0,255,102,0.15)]'
                   : 'text-slate-500 hover:text-slate-300 hover:bg-[#14171d]/40'
               }`}
             >
               <ArrowUpRight size={14} />
-              def take_entries() <span className="text-[0.65rem] opacity-60 font-normal">({takeEntries.length} lines)</span>
+              I HAVE TO TAKE (+FUND) <span className="text-[0.65rem] opacity-60 font-normal">({takeEntries.length} lines)</span>
             </button>
 
             <button
@@ -225,14 +225,14 @@ export default function AutomaticNotebook({
                 triggerHaptic('action');
                 setActiveTab('give');
               }}
-              className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+              className={`flex-1 py-3 text-[0.7rem] sm:text-xs font-bold uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activeTab === 'give'
                   ? 'bg-[#14171d] text-[#ff3b5c] border border-[#ff3b5c]/30 shadow-[0_0_12px_rgba(255,59,92,0.15)]'
                   : 'text-slate-500 hover:text-slate-300 hover:bg-[#14171d]/40'
               }`}
             >
               <ArrowDownLeft size={14} />
-              def give_entries() <span className="text-[0.65rem] opacity-60 font-normal">({giveEntries.length} lines)</span>
+              I HAVE TO GIVE (-FUND) <span className="text-[0.65rem] opacity-60 font-normal">({giveEntries.length} lines)</span>
             </button>
           </div>
 
@@ -242,14 +242,14 @@ export default function AutomaticNotebook({
             <div className="flex flex-1 min-h-full">
               
               {/* Line Numbers Sidebar */}
-              <div className="w-12 bg-[#090a0c] border-r border-[#1a1d24] py-4 select-none flex flex-col text-right pr-3 gap-1.5 text-xs text-slate-600 font-mono">
+              <div className="w-16 bg-[#090a0c] border-r border-[#1a1d24] py-4 select-none flex flex-col text-right pr-3 gap-1.5 text-[0.65rem] text-slate-600 font-mono">
                 {activeEntries.map((_, i) => (
-                  <div key={i} className="h-9 flex items-center justify-end font-bold text-[0.7rem]">
-                    {(i + 1).toString().padStart(2, '0')}
+                  <div key={i} className="h-9 flex items-center justify-end font-bold">
+                    Row {i + 1}
                   </div>
                 ))}
                 {/* Visual extra row indicator */}
-                <div className="h-9 flex items-center justify-end font-normal text-slate-800 text-[0.7rem] italic">
+                <div className="h-9 flex items-center justify-end font-normal text-slate-800 italic">
                   *
                 </div>
               </div>
