@@ -1,18 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Settings, Delete, RefreshCw, Power } from 'lucide-react';
+import { Settings, Delete, RefreshCw, Power, BookOpen, Cloud, CloudOff, Database } from 'lucide-react';
 
 import { ReceiptEntry } from './types';
+import { extractShahriyarValue, hasShahriyarValue } from './utils/parser';
 import CRTDisplay from './components/CRTDisplay';
 import ReceiptList from './components/ReceiptList';
 import SettingsModal from './components/SettingsModal';
 import ConfirmModal from './components/ConfirmModal';
+import AutomaticNotebook from './components/AutomaticNotebook';
+import AuthModal from './components/AuthModal';
 import { triggerHaptic } from './utils/haptic';
+import { getSupabaseClient, isSupabaseConfigured } from './lib/supabase';
 
 export default function App() {
   // --- States ---
   const [receipts, setReceipts] = useState<ReceiptEntry[]>(() => {
     const saved = localStorage.getItem('fund_calculator_receipts');
+    const all = saved ? JSON.parse(saved) : [];
+    return all.filter((r: any) => r.note && !r.note.startsWith('[Notebook] '));
+  });
+
+  const [notebookEntries, setNotebookEntries] = useState<ReceiptEntry[]>(() => {
+    const saved = localStorage.getItem('fund_calculator_notebook_entries');
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -29,18 +39,140 @@ export default function App() {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState<boolean>(false);
 
-  // Modals
+  // Modals & Panels
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isNotebookOpen, setIsNotebookOpen] = useState(false);
+
+  // Supabase Auth and Sync Status
+  const [user, setUser] = useState<any>(null);
+  const [syncing, setSyncing] = useState(false);
 
   // References
   const noteInputRef = useRef<HTMLInputElement>(null);
 
-  // --- Effects ---
+  // --- Effects & Supabase Sync ---
+  const syncReceipts = async (currentUser = user) => {
+    if (!currentUser || !isSupabaseConfigured()) return;
+    setSyncing(true);
+    const client = getSupabaseClient();
+    try {
+      const { data: remoteData, error } = await client
+        .from('receipts')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Error fetching receipts from Supabase:', error);
+        return;
+      }
+
+      const remoteAll: ReceiptEntry[] = (remoteData || []).map((r: any) => ({
+        id: r.id,
+        type: r.type as 'plus' | 'minus',
+        amount: parseFloat(r.amount),
+        note: r.note || '',
+        time: r.time,
+        currencySymbol: r.currency_symbol,
+      }));
+
+      // Split remote into calculator receipts vs notebook entries
+      const remoteNotebook = remoteAll
+        .filter((r) => r.note && r.note.startsWith('[Notebook] '))
+        .map((r) => ({ ...r, note: r.note.substring('[Notebook] '.length) }));
+
+      const remoteReceipts = remoteAll.filter((r) => !r.note || !r.note.startsWith('[Notebook] '));
+
+      // 1. Sync Calculator Receipts
+      const localReceipts = [...receipts];
+      const mergedReceipts = [...remoteReceipts];
+      const toUploadReceipts = localReceipts.filter((l) => !remoteReceipts.some((r) => r.id === l.id));
+
+      if (toUploadReceipts.length > 0) {
+        const insertPayload = toUploadReceipts.map((l) => ({
+          id: l.id,
+          user_id: currentUser.id,
+          type: l.type,
+          amount: l.amount,
+          note: l.note,
+          time: l.time,
+          currency_symbol: l.currencySymbol,
+        }));
+
+        const { error: insertError } = await client.from('receipts').insert(insertPayload);
+        if (insertError) {
+          console.error('Error uploading local receipts:', insertError);
+        } else {
+          mergedReceipts.push(...toUploadReceipts);
+        }
+      }
+      setReceipts(mergedReceipts);
+
+      // 2. Sync Notebook Entries
+      const localNotebook = [...notebookEntries];
+      const mergedNotebook = [...remoteNotebook];
+      const toUploadNotebook = localNotebook.filter((l) => !remoteNotebook.some((r) => r.id === l.id));
+
+      if (toUploadNotebook.length > 0) {
+        const insertPayload = toUploadNotebook.map((l) => ({
+          id: l.id,
+          user_id: currentUser.id,
+          type: l.type,
+          amount: l.amount,
+          note: `[Notebook] ${l.note}`,
+          time: l.time,
+          currency_symbol: l.currencySymbol,
+        }));
+
+        const { error: insertError } = await client.from('receipts').insert(insertPayload);
+        if (insertError) {
+          console.error('Error uploading local notebook:', insertError);
+        } else {
+          mergedNotebook.push(...toUploadNotebook);
+        }
+      }
+      setNotebookEntries(mergedNotebook);
+
+    } catch (err) {
+      console.error('Sync failed:', err);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Auth session listener
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+    const client = getSupabaseClient();
+    
+    client.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Sync receipts whenever user changes
+  useEffect(() => {
+    if (user) {
+      syncReceipts(user);
+    }
+  }, [user]);
+
   // Save receipts to LocalStorage
   useEffect(() => {
     localStorage.setItem('fund_calculator_receipts', JSON.stringify(receipts));
   }, [receipts]);
+
+  // Save notebook entries to LocalStorage
+  useEffect(() => {
+    localStorage.setItem('fund_calculator_notebook_entries', JSON.stringify(notebookEntries));
+  }, [notebookEntries]);
 
   // Save currency to LocalStorage
   useEffect(() => {
@@ -197,7 +329,7 @@ export default function App() {
     });
 
     const newEntry: ReceiptEntry = {
-      id: `entry-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       type: currentMode,
       amount: parsed,
       note: noteText.trim(),
@@ -206,6 +338,25 @@ export default function App() {
     };
 
     setReceipts((prev) => [...prev, newEntry]);
+
+    // Real-time Supabase save
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .insert({
+          id: newEntry.id,
+          user_id: user.id,
+          type: newEntry.type,
+          amount: newEntry.amount,
+          note: newEntry.note,
+          time: newEntry.time,
+          currency_symbol: newEntry.currencySymbol,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Supabase insert error:', error);
+        });
+    }
     
     // Clear display and note text
     setTypedAmount('');
@@ -214,13 +365,171 @@ export default function App() {
 
   const handleRemoveEntry = (id: string) => {
     setReceipts((prev) => prev.filter((r) => r.id !== id));
+
+    // Real-time Supabase delete
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Supabase delete error:', error);
+        });
+    }
+  };
+
+  const handleUpdateReceipt = (id: string, note: string) => {
+    const hasValue = hasShahriyarValue(note);
+    const amount = hasValue ? extractShahriyarValue(note) : 0;
+
+    setReceipts((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, note, amount } : r))
+    );
+
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .update({ note, amount })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Supabase update error:', error);
+        });
+    }
+  };
+
+  const handleAddReceipt = (type: 'plus' | 'minus') => {
+    const now = new Date();
+    const formattedTime = now.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const newEntry: ReceiptEntry = {
+      id: `entry-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      type,
+      amount: 0,
+      note: '',
+      time: formattedTime,
+      currencySymbol,
+    };
+
+    setReceipts((prev) => [...prev, newEntry]);
+
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .insert({
+          id: newEntry.id,
+          user_id: user.id,
+          type: newEntry.type,
+          amount: newEntry.amount,
+          note: newEntry.note,
+          time: newEntry.time,
+          currency_symbol: newEntry.currencySymbol,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Supabase insert error:', error);
+        });
+    }
+  };
+
+  // --- Notebook Specific Isolated Handlers ---
+  const handleRemoveNotebook = (id: string) => {
+    setNotebookEntries((prev) => prev.filter((r) => r.id !== id));
+
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .delete()
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Supabase notebook delete error:', error);
+        });
+    }
+  };
+
+  const handleUpdateNotebook = (id: string, note: string) => {
+    const hasValue = hasShahriyarValue(note);
+    const amount = hasValue ? extractShahriyarValue(note) : 0;
+
+    setNotebookEntries((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, note, amount } : r))
+    );
+
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .update({ note: `[Notebook] ${note}`, amount })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) console.error('Supabase notebook update error:', error);
+        });
+    }
+  };
+
+  const handleAddNotebook = (type: 'plus' | 'minus') => {
+    const now = new Date();
+    const formattedTime = now.toLocaleTimeString('en-US', {
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    const newEntry: ReceiptEntry = {
+      id: `notebook-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      type,
+      amount: 0,
+      note: '',
+      time: formattedTime,
+      currencySymbol,
+    };
+
+    setNotebookEntries((prev) => [...prev, newEntry]);
+
+    if (user && isSupabaseConfigured()) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .insert({
+          id: newEntry.id,
+          user_id: user.id,
+          type: newEntry.type,
+          amount: newEntry.amount,
+          note: `[Notebook] ${newEntry.note}`,
+          time: newEntry.time,
+          currency_symbol: newEntry.currencySymbol,
+        })
+        .then(({ error }) => {
+          if (error) console.error('Supabase notebook insert error:', error);
+        });
+    }
   };
 
   const handleResetSystem = () => {
+    const idsToDelete = receipts.map((r) => r.id);
+
     setReceipts([]);
     setTypedAmount('');
     setNoteText('');
     setIsResetOpen(false);
+
+    // Real-time Supabase reset (only delete non-notebook entries!)
+    if (user && isSupabaseConfigured() && idsToDelete.length > 0) {
+      const client = getSupabaseClient();
+      client
+        .from('receipts')
+        .delete()
+        .in('id', idsToDelete)
+        .then(({ error }) => {
+          if (error) console.error('Supabase reset error:', error);
+        });
+    }
   };
 
   const handleSelectCurrencySymbol = (symbol: string) => {
@@ -351,19 +660,58 @@ export default function App() {
               MADE BY WEALINK
             </p>
           </div>
-          <button
-            type="button"
-            id="btn-settings-trigger"
-            onPointerDown={() => triggerHaptic('action')}
-            onClick={() => {
-              setIsSettingsOpen(true);
-            }}
-            style={{ color: '#4a4d52', fontSize: '1.1rem' }}
-            className="cursor-pointer hover:text-white transition-colors p-1"
-            title="Open Settings"
-          >
-            ⚙
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Notebook Automatico Trigger - Beautiful Terminal/Glow Style */}
+            <button
+              type="button"
+              id="btn-notebook-trigger"
+              onPointerDown={() => triggerHaptic('action')}
+              onClick={() => setIsNotebookOpen(true)}
+              style={{
+                border: '1px solid rgba(0, 255, 136, 0.25)',
+                borderRadius: '10px',
+                padding: '6px 8px',
+                background: 'rgba(0, 255, 136, 0.05)',
+                boxShadow: '0 0 10px rgba(0, 255, 136, 0.05)',
+              }}
+              className="cursor-pointer text-[#00ff88] hover:text-[#00ff66] hover:border-[#00ff88]/50 hover:bg-[#00ff88]/10 transition-all flex items-center justify-center gap-1 relative"
+              title="Apri Notebook Automatico"
+            >
+              <BookOpen size={17} className="animate-pulse" />
+              <span className="text-[0.65rem] font-bold font-mono tracking-wider hidden sm:inline">NOTEBOOK</span>
+              {notebookEntries.some(r => r.note && r.note.toLowerCase().includes('(shahriyar')) && (
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#00ff88] rounded-full animate-ping shadow-[0_0_8px_#00ff88]" />
+              )}
+            </button>
+
+            {/* Cloud Sync Auth Trigger */}
+            <button
+              type="button"
+              id="btn-auth-trigger"
+              onPointerDown={() => triggerHaptic('action')}
+              onClick={() => setIsAuthOpen(true)}
+              className={`cursor-pointer transition-colors p-1.5 flex items-center justify-center relative ${
+                user ? 'text-[#00ff88] drop-shadow-[0_0_4px_rgba(0,255,136,0.4)]' : 'text-[#4a4d52] hover:text-white'
+              }`}
+              title={user ? `Sincronizzato come ${user.email}` : 'Accedi o configura Cloud Sync'}
+            >
+              {user ? <Cloud size={16} /> : <CloudOff size={16} />}
+            </button>
+
+            {/* Settings Trigger */}
+            <button
+              type="button"
+              id="btn-settings-trigger"
+              onPointerDown={() => triggerHaptic('action')}
+              onClick={() => {
+                setIsSettingsOpen(true);
+              }}
+              className="cursor-pointer text-[#4a4d52] hover:text-white transition-colors p-1.5 flex items-center justify-center text-[1.1rem]"
+              title="Open Settings"
+            >
+              ⚙
+            </button>
+          </div>
         </header>
 
         {/* CRT DISPLAY PANEL */}
@@ -487,6 +835,7 @@ export default function App() {
             -FUND
           </button>
         </section>
+
 
         {/* Receipt Stream Section */}
         <section className="flex-1 flex flex-col min-h-[80px] mb-1.5" id="receipt-section">
@@ -784,6 +1133,26 @@ export default function App() {
         isOpen={isResetOpen}
         onConfirm={handleResetSystem}
         onCancel={() => setIsResetOpen(false)}
+      />
+
+      {/* --- Notebook Automatico Panel --- */}
+      <AutomaticNotebook
+        isOpen={isNotebookOpen}
+        onClose={() => setIsNotebookOpen(false)}
+        receipts={notebookEntries}
+        currencySymbol={currencySymbol}
+        onUpdateReceipt={handleUpdateNotebook}
+        onAddReceipt={handleAddNotebook}
+        onRemoveReceipt={handleRemoveNotebook}
+      />
+
+      {/* --- Auth & Cloud Sync Modal --- */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onAuthChange={(u) => setUser(u)}
+        onSyncRequest={() => syncReceipts(user)}
+        syncing={syncing}
       />
     </div>
   );
