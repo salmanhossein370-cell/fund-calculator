@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, LogIn, UserPlus, Shield, Database, AlertCircle, Check, WifiOff, Globe } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Shield, Database, AlertCircle, Check, Globe } from 'lucide-react';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { triggerHaptic } from '../utils/haptic';
 
@@ -25,11 +25,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     triggerHaptic('action');
-
-    if (!isConfigured) {
-      setErrorMsg('Database Supabase non configurato. Clicca su "Accedi Offline" o configura il database in basso.');
-      return;
-    }
 
     setLoading(true);
     setErrorMsg(null);
@@ -70,10 +65,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
 
   const handleGoogleLogin = async () => {
     triggerHaptic('action');
-    if (!isConfigured) {
-      setErrorMsg('Database Supabase non configurato.');
-      return;
-    }
 
     setLoading(true);
     setErrorMsg(null);
@@ -92,18 +83,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
       setErrorMsg(err.message || "Errore con Google OAuth");
       setLoading(false);
     }
-  };
-
-  const handleOfflineBypass = () => {
-    triggerHaptic('action');
-    setSuccessMsg('Ingresso in modalità offline locale!');
-    setTimeout(() => {
-      onAuthSuccess({
-        id: 'local-offline-user',
-        email: 'demo@offline.local',
-        isOffline: true
-      });
-    }, 800);
   };
 
   const handleSaveConfig = () => {
@@ -165,29 +144,13 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           </p>
         </div>
 
-        {/* Database Status Alert Block */}
-        <div className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left ${
-          isConfigured 
-            ? 'bg-[#0a1810]/40 border-[#00ff88]/20 text-[#00ff88]'
-            : 'bg-[#18110a]/40 border-[#ff9d00]/20 text-[#ff9d00]'
-        }`}>
-          {isConfigured ? (
-            <>
-              <Globe size={16} className="flex-shrink-0 animate-pulse text-[#00ff88]" />
-              <div className="min-w-0">
-                <div className="text-[0.65rem] font-bold uppercase tracking-wider">Cloud Connected</div>
-                <div className="text-[0.55rem] text-slate-500 truncate">Sincronizzazione in tempo reale attiva</div>
-              </div>
-            </>
-          ) : (
-            <>
-              <WifiOff size={16} className="flex-shrink-0 text-[#ff9d00]" />
-              <div className="min-w-0">
-                <div className="text-[0.65rem] font-bold uppercase tracking-wider">Offline Local Mode Active</div>
-                <div className="text-[0.55rem] text-slate-500">I dati rimarranno privati su questo browser</div>
-              </div>
-            </>
-          )}
+        {/* Database Status Block */}
+        <div className="w-full p-3 rounded-xl border flex items-center gap-3 text-left bg-[#0a1810]/40 border-[#00ff88]/20 text-[#00ff88]">
+          <Globe size={16} className="flex-shrink-0 animate-pulse text-[#00ff88]" />
+          <div className="min-w-0">
+            <div className="text-[0.65rem] font-bold uppercase tracking-wider">Cloud Connected</div>
+            <div className="text-[0.55rem] text-slate-500 truncate">Sincronizzazione in tempo reale attiva</div>
+          </div>
         </div>
 
         {/* Tab switcher: clean terminal block */}
@@ -259,7 +222,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               <Mail size={14} className="absolute left-3 top-2.5 text-[#4a4d52]" />
               <input
                 type="email"
-                required={isConfigured}
+                required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="utente@esempio.com"
@@ -274,7 +237,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               <Lock size={14} className="absolute left-3 top-2.5 text-[#4a4d52]" />
               <input
                 type="password"
-                required={isConfigured}
+                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -294,20 +257,6 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               {activeTab === 'login' ? <LogIn size={13} /> : <UserPlus size={13} />}
               {loading ? 'ELABORAZIONE...' : activeTab === 'login' ? 'ACCEDI ORA' : 'REGISTRATI ORA'}
             </button>
-
-            {/* Offline Bypass Option (always accessible, and especially high visibility if unconfigured) */}
-            <button
-              type="button"
-              onClick={handleOfflineBypass}
-              className={`w-full py-2.5 text-xs font-bold uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all border ${
-                !isConfigured
-                  ? 'bg-[#161d18] border-[#00ff88]/40 hover:border-[#00ff88] text-[#00ff88] shadow-[0_0_15px_rgba(0,255,136,0.05)]'
-                  : 'bg-[#111214] border-[#1f2226] hover:bg-[#1a1c20] text-slate-400 hover:text-white'
-              }`}
-            >
-              <WifiOff size={13} />
-              ACCEDI OFFLINE (DEMO)
-            </button>
           </div>
 
           {/* Separation line */}
@@ -321,7 +270,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <button
             type="button"
             onClick={handleGoogleLogin}
-            disabled={loading || !isConfigured}
+            disabled={loading}
             className="w-full py-2.5 bg-[#111214] border border-[#1f2226] hover:bg-[#1a1c20] text-white font-bold text-xs uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all hover:border-[#4285F4]/30 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none">
@@ -371,7 +320,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               className="w-full bg-[#111214] border border-[#1f2226] p-4 rounded-xl space-y-3.5 text-left"
             >
               <div className="text-[0.65rem] text-slate-500 uppercase tracking-widest leading-relaxed">
-                💡 <span className="text-white font-bold">DATABASE TERMINAL</span>: Inserisci i parametri Supabase del tuo progetto per salvare le note in cloud privato.
+                💡 <span className="text-white font-bold">DATABASE TERMINAL</span>: Parametri Supabase configurati.
               </div>
 
               <div className="space-y-1">
@@ -420,3 +369,4 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     </div>
   );
 }
+
