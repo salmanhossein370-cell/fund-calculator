@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, LogIn, UserPlus, Shield, Database, AlertCircle, Check } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Shield, Database, AlertCircle, Check, WifiOff, Globe } from 'lucide-react';
 import { getSupabaseClient, isSupabaseConfigured } from '../lib/supabase';
 import { triggerHaptic } from '../utils/haptic';
 
@@ -27,7 +27,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     triggerHaptic('action');
 
     if (!isConfigured) {
-      setErrorMsg('Database Supabase non configurato. Clicca sull\'icona del database in basso per configurarlo.');
+      setErrorMsg('Database Supabase non configurato. Clicca su "Accedi Offline" o configura il database in basso.');
       return;
     }
 
@@ -94,6 +94,18 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
     }
   };
 
+  const handleOfflineBypass = () => {
+    triggerHaptic('action');
+    setSuccessMsg('Ingresso in modalità offline locale!');
+    setTimeout(() => {
+      onAuthSuccess({
+        id: 'local-offline-user',
+        email: 'demo@offline.local',
+        isOffline: true
+      });
+    }, 800);
+  };
+
   const handleSaveConfig = () => {
     triggerHaptic('action');
     if (customUrl.trim() && customKey.trim()) {
@@ -138,7 +150,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
         }}
       />
 
-      <div className="w-full max-w-[360px] flex flex-col items-center gap-8 relative z-10">
+      <div className="w-full max-w-[360px] flex flex-col items-center gap-6 relative z-10">
         
         {/* Simple elegant native-looking logo */}
         <div className="flex flex-col items-center text-center">
@@ -151,6 +163,31 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
           <p className="text-[0.65rem] text-[#4a4d52] tracking-[2px] mt-1 uppercase">
             SECURED NATIVE ENDPOINT
           </p>
+        </div>
+
+        {/* Database Status Alert Block */}
+        <div className={`w-full p-3 rounded-xl border flex items-center gap-3 text-left ${
+          isConfigured 
+            ? 'bg-[#0a1810]/40 border-[#00ff88]/20 text-[#00ff88]'
+            : 'bg-[#18110a]/40 border-[#ff9d00]/20 text-[#ff9d00]'
+        }`}>
+          {isConfigured ? (
+            <>
+              <Globe size={16} className="flex-shrink-0 animate-pulse text-[#00ff88]" />
+              <div className="min-w-0">
+                <div className="text-[0.65rem] font-bold uppercase tracking-wider">Cloud Connected</div>
+                <div className="text-[0.55rem] text-slate-500 truncate">Sincronizzazione in tempo reale attiva</div>
+              </div>
+            </>
+          ) : (
+            <>
+              <WifiOff size={16} className="flex-shrink-0 text-[#ff9d00]" />
+              <div className="min-w-0">
+                <div className="text-[0.65rem] font-bold uppercase tracking-wider">Offline Local Mode Active</div>
+                <div className="text-[0.55rem] text-slate-500">I dati rimarranno privati su questo browser</div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Tab switcher: clean terminal block */}
@@ -222,7 +259,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               <Mail size={14} className="absolute left-3 top-2.5 text-[#4a4d52]" />
               <input
                 type="email"
-                required
+                required={isConfigured}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="utente@esempio.com"
@@ -237,7 +274,7 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
               <Lock size={14} className="absolute left-3 top-2.5 text-[#4a4d52]" />
               <input
                 type="password"
-                required
+                required={isConfigured}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -247,29 +284,45 @@ export default function LoginScreen({ onAuthSuccess }: LoginScreenProps) {
             </div>
           </div>
 
-          {/* Action button: highly visible tactile call to action */}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-[#00ff88] hover:bg-[#00dd75] text-[#050d09] font-bold text-xs uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(0,255,136,0.15)] disabled:opacity-50"
-          >
-            {activeTab === 'login' ? <LogIn size={13} /> : <UserPlus size={13} />}
-            {loading ? 'ELABORAZIONE...' : activeTab === 'login' ? 'ACCEDI ORA' : 'REGISTRATI ORA'}
-          </button>
+          <div className="flex flex-col gap-2 pt-2">
+            {/* Primary Email Auth */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-[#00ff88] hover:bg-[#00dd75] text-[#050d09] font-bold text-xs uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(0,255,136,0.15)] disabled:opacity-50"
+            >
+              {activeTab === 'login' ? <LogIn size={13} /> : <UserPlus size={13} />}
+              {loading ? 'ELABORAZIONE...' : activeTab === 'login' ? 'ACCEDI ORA' : 'REGISTRATI ORA'}
+            </button>
+
+            {/* Offline Bypass Option (always accessible, and especially high visibility if unconfigured) */}
+            <button
+              type="button"
+              onClick={handleOfflineBypass}
+              className={`w-full py-2.5 text-xs font-bold uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all border ${
+                !isConfigured
+                  ? 'bg-[#161d18] border-[#00ff88]/40 hover:border-[#00ff88] text-[#00ff88] shadow-[0_0_15px_rgba(0,255,136,0.05)]'
+                  : 'bg-[#111214] border-[#1f2226] hover:bg-[#1a1c20] text-slate-400 hover:text-white'
+              }`}
+            >
+              <WifiOff size={13} />
+              ACCEDI OFFLINE (DEMO)
+            </button>
+          </div>
 
           {/* Separation line */}
           <div className="relative my-4 flex py-1 items-center justify-center">
-            <div className="w-1/3 border-t border-[#1f2226]"></div>
-            <span className="mx-3 text-[0.55rem] text-[#4a4d52] uppercase tracking-widest font-mono">OPPURE CONTINUA CON</span>
-            <div className="w-1/3 border-t border-[#1f2226]"></div>
+            <div className="w-1/4 border-t border-[#1f2226]"></div>
+            <span className="mx-3 text-[0.55rem] text-[#4a4d52] uppercase tracking-widest font-mono">OPPURE</span>
+            <div className="w-1/4 border-t border-[#1f2226]"></div>
           </div>
 
           {/* Google Sign-in button */}
           <button
             type="button"
             onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full py-2.5 bg-[#111214] border border-[#1f2226] hover:bg-[#1a1c20] text-white font-bold text-xs uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all hover:border-[#4285F4]/30"
+            disabled={loading || !isConfigured}
+            className="w-full py-2.5 bg-[#111214] border border-[#1f2226] hover:bg-[#1a1c20] text-white font-bold text-xs uppercase rounded-xl cursor-pointer flex items-center justify-center gap-2 transition-all hover:border-[#4285F4]/30 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none">
               <path
