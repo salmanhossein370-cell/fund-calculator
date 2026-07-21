@@ -1,13 +1,42 @@
 import { createClient } from '@supabase/supabase-js';
 
-const defaultUrl = (import.meta as any).env?.VITE_SUPABASE_URL || '';
-const defaultKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '';
+// Flexible helper to read environment variables across Vite import.meta.env and Node/Vercel process.env
+const getEnvVar = (key: string): string => {
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env && (import.meta as any).env[key]) {
+      return (import.meta as any).env[key];
+    }
+  } catch (e) {}
 
-const getStoredSupabaseConfig = () => {
-  if (typeof window === 'undefined') return { url: '', key: '' };
+  try {
+    if (typeof process !== 'undefined' && process.env && process.env[key]) {
+      return process.env[key] || '';
+    }
+  } catch (e) {}
+
+  try {
+    if (typeof window !== 'undefined' && (window as any).__ENV && (window as any).__ENV[key]) {
+      return (window as any).__ENV[key];
+    }
+  } catch (e) {}
+
+  return '';
+};
+
+export const getStoredSupabaseConfig = () => {
+  const envUrl = getEnvVar('VITE_SUPABASE_URL');
+  const envKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+
+  if (typeof window === 'undefined') {
+    return { url: envUrl, key: envKey };
+  }
+
+  const storedUrl = localStorage.getItem('supabase_temp_url');
+  const storedKey = localStorage.getItem('supabase_temp_key');
+
   return {
-    url: localStorage.getItem('supabase_temp_url') || defaultUrl,
-    key: localStorage.getItem('supabase_temp_key') || defaultKey,
+    url: storedUrl && storedUrl.trim() !== '' ? storedUrl.trim() : envUrl.trim(),
+    key: storedKey && storedKey.trim() !== '' ? storedKey.trim() : envKey.trim(),
   };
 };
 
@@ -90,7 +119,7 @@ export const isSupabaseConfigured = () => {
   return (
     !!currentConfig.url &&
     !!currentConfig.key &&
-    currentConfig.url.startsWith('http') &&
+    currentConfig.url.trim().startsWith('http') &&
     currentConfig.url !== 'https://placeholder-url-for-compilation.supabase.co'
   );
 };
